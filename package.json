@@ -1,0 +1,25 @@
+{
+  "name": "atomic-informix",
+  "version": "0.0.1",
+  "description": "Informix database module for Brobridge Atomic",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "informix",
+    "node-red",
+    "atomic"
+  ],
+  "author": "Fred Chien <fred@brobridge.com>",
+  "license": "APL",
+  "node-red": {
+    "nodes": {
+      "mssql-connection": "informix-connection.js",
+      "mssql-execute": "informix-execute.js"
+    }
+  },
+  "dependencies": {
+    "generic-pool": "^3.9.0",
+    "ibm_db": "^3.2.1"
+  }
+}
