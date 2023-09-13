@@ -1,6 +1,9 @@
 module.exports = function(RED) {
 
 	function genQueryCmd() {
+		//return arguments
+		arguments[0] = arguments[0].join('?');
+		arguments[1] = Array.prototype.slice.call(arguments, 1);
 		return Array.from(arguments);
 	}
 
@@ -52,10 +55,43 @@ module.exports = function(RED) {
 					shape: 'dot',
 					text: 'requesting'
 				});
-
 				let request = await pool.request();
-				let rs = await request.query.apply(request, genQueryCmdParameters(tpl, msg));
 
+				let q = genQueryCmdParameters(tpl, msg);
+				q[2]=function(err, rs){
+					if(err){
+						node.status({
+							fill: 'red',
+							shape: 'ring',
+							text: err.toString()
+						});
+						msg.errorCode=err.sqlcode;
+						node.error(err, msg);
+
+						done();
+					} else {
+						node.status({
+							fill: 'green',
+							shape: 'dot',
+							text: 'done'
+						});
+
+						// Preparing result
+						if (node.config.outputPropType == 'msg') {
+							msg[node.config.outputProp] = {
+								results: rs || [],
+							}
+						}
+
+						node.send(msg);
+						done();
+					}
+
+					node.connection.releasePool(request);
+				};
+				await request.query.apply(request, q);
+				/*
+				let rs = await request.query.apply(request, q);
 				node.status({
 					fill: 'green',
 					shape: 'dot',
@@ -65,14 +101,16 @@ module.exports = function(RED) {
 				// Preparing result
 				if (node.config.outputPropType == 'msg') {
 					msg[node.config.outputProp] = {
-						results: rs.recordset || [],
+						//results: rs.recordset || [],
+						results: rs || [],
 						rowsAffected: rs.rowsAffected,
+						//rowsAffected: rs,
 					}
 				}
 
 				node.send(msg);
-
 				done();
+				*/
 			} catch(e) {
 				node.status({
 					fill: 'red',

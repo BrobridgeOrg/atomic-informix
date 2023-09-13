@@ -68,6 +68,10 @@ module.exports = class Client extends events.EventEmitter {
 		};
 	}
 
+	releasePool(conn) {
+		this.pool.release(conn);
+	}
+
 	createClient() {
 		console.log('createClient', this.getConnectionConfigs());
 		return ibmdb.open(this.getConnectionConfigs());
