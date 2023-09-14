@@ -58,6 +58,8 @@ module.exports = function(RED) {
 				let request = await pool.request();
 
 				let q = genQueryCmdParameters(tpl, msg);
+
+				// append callback function
 				q[2]=function(err, rs){
 					if(err){
 						node.status({
@@ -65,9 +67,9 @@ module.exports = function(RED) {
 							shape: 'ring',
 							text: err.toString()
 						});
+
 						msg.errorCode=err.sqlcode;
 						node.error(err, msg);
-
 						done();
 					} else {
 						node.status({
@@ -90,27 +92,6 @@ module.exports = function(RED) {
 					node.connection.releasePool(request);
 				};
 				await request.query.apply(request, q);
-				/*
-				let rs = await request.query.apply(request, q);
-				node.status({
-					fill: 'green',
-					shape: 'dot',
-					text: 'done'
-				});
-
-				// Preparing result
-				if (node.config.outputPropType == 'msg') {
-					msg[node.config.outputProp] = {
-						//results: rs.recordset || [],
-						results: rs || [],
-						rowsAffected: rs.rowsAffected,
-						//rowsAffected: rs,
-					}
-				}
-
-				node.send(msg);
-				done();
-				*/
 			} catch(e) {
 				node.status({
 					fill: 'red',
