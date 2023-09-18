@@ -171,7 +171,7 @@
 					method: 'POST',
 					dataType: 'json',
 					cache: false,
-					url: '/nodes/atomic-mssql/apis/execute',
+					url: '/nodes/atomic-informix/apis/execute',
 					data: {
 						connection: node.connection,
 						query: playgroundEditor.getValue()
@@ -184,11 +184,9 @@
 							$('#node-playground-result-message')
 								.append($('<div>').text('Finished with error.'))
 								.append($('<div>').text([
-									'Msg ' + data.error.number,
-									'Level ' + data.error.class,
-									'State ' + data.error.state,
+									'State: ' + data.error.state,
 								].join(',')))
-								.append($('<div>').text('Line ' + data.error.lineNumber + ': ' + data.error.message))
+								.append($('<div>').text(data.error.message))
 								.show();
 
 							return;

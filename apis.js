@@ -21,7 +21,7 @@ function init(RED) {
 		(async () => {
 
 			try {
-				let rs = await request(pool, req.body.query);
+				let rs = await request(connection, pool, req.body.query);
 
 				res.json({
 					success: true,
@@ -35,19 +35,17 @@ function init(RED) {
 				res.json({
 					success: false,
 					error: {
-						class: e.originalError.info.class,
-						state: e.originalError.info.state,
-						number: e.originalError.info.number,
-						lineNumber: e.originalError.info.lineNumber,
-						message: e.originalError.info.message
+						state: e.state,
+						message: e.toString()
 					}
 				});
 			}
+
 		})();
 	});
 }
 
-function request(pool, query) {
+function request(connection, pool, query) {
 
 	return new Promise((resolve, reject) => {
 
@@ -61,16 +59,19 @@ function request(pool, query) {
 			conn.query(opts, (err, rows) => {
 
 				if (err) {
-					reject(err);
-					return;
-				}
 
-				resolve({
-					finished: true,
-					recordset: rows,
-					rowsAffected: rowsAffected,
-				});
+					reject(err);
+				} else {
+
+					resolve({
+						finished: true,
+						recordset: rows,
+						rowsAffected: rows.length,
+						//rowsAffected: rowsAffected,
+					});
+				}
 			});
+			connection.releasePool(conn);
 		});
 	});
 }
