@@ -14,8 +14,8 @@
   "license": "APL",
   "node-red": {
     "nodes": {
-      "mssql-connection": "informix-connection.js",
-      "mssql-execute": "informix-execute.js"
+      "informix-connection": "informix-connection.js",
+      "informix-execute": "informix-execute.js"
     }
   },
   "dependencies": {
