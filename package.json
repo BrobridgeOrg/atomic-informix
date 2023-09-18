@@ -1,6 +1,6 @@
 {
   "name": "atomic-informix",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Informix database module for Brobridge Atomic",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
