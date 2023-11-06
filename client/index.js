@@ -14,6 +14,7 @@ module.exports = class Client extends events.EventEmitter {
 			database: '',
 			maxPoolSize: 10,
 			minPoolSize: 1,
+			connectionRetryInterval: 3000,
 		}, opts.connection, {
 			auth: Object.assign({
 				type: 'default',
@@ -97,7 +98,7 @@ module.exports = class Client extends events.EventEmitter {
 
 					this.emit('reconnect')
 					this.connect();
-				}, 3000);
+				}, this.opts.connectionRetryInterval);
 			});
 	}
 
