@@ -23,7 +23,7 @@ module.exports = function (RED) {
 			connectionTimeout: Number(n.connectionTimeout) || 15000,
 			requestTimeout: Number(n.requestTimeout) || 15000,
 			*/
-			connectionRetryInterval: Number(nconnectionRetryInterval) || 3000,
+			connectionRetryInterval: Number(n.connectionRetryInterval) || 3000,
 			auth: {
 				type: n.authType || 'default',
 				username: this.credentials.username || 'sa',
