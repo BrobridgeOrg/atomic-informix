@@ -74,15 +74,15 @@ module.exports = class Client extends events.EventEmitter {
 	}
 
 	createClient() {
-		console.log('createClient', this.getConnectionConfigs());
 		return ibmdb.open(this.getConnectionConfigs());
 	}
 
 	connect() {
-		console.log('connect');
+
+		console.log('connecing', this.getConnectionConfigs());
+
 		this.pool.acquire()
 			.then(conn => {
-		console.log('connected');
 				this.conn = conn;
 				this.emit('connected');
 			})
