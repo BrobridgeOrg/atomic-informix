@@ -76,6 +76,10 @@ module.exports = function (RED) {
 		node.log('Connecting to Informix server: ' + node.connConfig.server + ':' + node.connConfig.port);
 		this.client.connect();
 
+		this.getConnection = function() {
+			return node.client.getConnection();
+		};
+
 		this.getPool = function() {
 			return node.client.getPool();
 		};

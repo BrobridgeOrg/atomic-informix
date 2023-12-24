@@ -39,10 +39,12 @@ module.exports = function(RED) {
 			if (node.config.querySource === 'dynamic' && !msg.query)
 				return;
 
+			let request = await node.connection.getConnection();
+			/*
 			let pool = node.connection.getPool();
 			if (!pool)
 				return;
-
+*/
 			let tpl = node.tpl;
 			if (msg.query) {
 				// higher priority for msg.query
@@ -55,7 +57,7 @@ module.exports = function(RED) {
 					shape: 'dot',
 					text: 'requesting'
 				});
-				let request = await pool.request();
+				//let request = await pool.request();
 
 				let q = genQueryCmdParameters(tpl, msg);
 
@@ -89,7 +91,7 @@ module.exports = function(RED) {
 						done();
 					}
 
-					node.connection.releasePool(request);
+					//node.connection.releasePool(request);
 				};
 				await request.query.apply(request, q);
 			} catch(e) {

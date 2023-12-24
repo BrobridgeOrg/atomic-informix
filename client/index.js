@@ -1,7 +1,7 @@
 const events = require('events');
 const util = require('util');
 const ibmdb = require('ibm_db');
-const genericPool = require("generic-pool");
+//const genericPool = require("generic-pool");
 
 module.exports = class Client extends events.EventEmitter {
 
@@ -14,7 +14,7 @@ module.exports = class Client extends events.EventEmitter {
 			database: '',
 			maxPoolSize: 10,
 			minPoolSize: 1,
-			connectionRetryInterval: 3000,
+			connectionRetryInterval: 10000,
 		}, opts.connection, {
 			auth: Object.assign({
 				type: 'default',
@@ -25,12 +25,15 @@ module.exports = class Client extends events.EventEmitter {
 
 		this.status = 'disconnected';
 		this.timer = null;
+/*
 		this.pool = genericPool.createPool(this.prepareFactory(), {
 			min: this.opts.minPoolSize,
 			max: this.opts.maxPoolSize,
 		});
+*/
+		this.pool = new ibmdb.Pool();
 	}
-
+/*
 	prepareFactory() {
 		return {
 			create: () => {
@@ -41,7 +44,7 @@ module.exports = class Client extends events.EventEmitter {
 			}
 		};
 	}
-
+*/
 	getConnectionConfigs() {
 
 		// Preparing configurations
@@ -60,6 +63,25 @@ module.exports = class Client extends events.EventEmitter {
 			})
 			.join(';');
 	}
+/*
+	acquire() {
+		return new Promise(async (resolve, reject) => {
+
+			if (this.status == 'disconnected') {
+
+				// Waiting for connecting
+				this.on('connected', () => {
+					let conn = await this.pool.acquire();
+					resolve(conn);
+				});
+
+				return;
+			}
+
+			let conn = await this.pool.acquire();
+			resolve(conn);
+		});
+	}
 
 	getPool() {
 		return {
@@ -68,6 +90,7 @@ module.exports = class Client extends events.EventEmitter {
 			}
 		};
 	}
+	*/
 
 	releasePool(conn) {
 		this.pool.release(conn);
@@ -77,35 +100,72 @@ module.exports = class Client extends events.EventEmitter {
 		return ibmdb.open(this.getConnectionConfigs());
 	}
 
+	getConnection() {
+		return this.pool.open(this.getConnectionConfigs());
+	}
+
+	attemptReconnect() {
+
+		clearTimeout(this.timer);
+
+		// Reconnecting
+		this.timer = setTimeout(() => {
+
+			this.emit('reconnect')
+			this.connect();
+		}, this.opts.connectionRetryInterval);
+	}
+
 	connect() {
 
 		console.log('connecing', this.getConnectionConfigs());
 
+		this.pool.open(this.getConnectionConfigs(), (err, db) => {
+
+			if (err) {
+				this.status = 'disconnected';
+
+				console.log('Failed to connect to database');
+				console.log(err);
+
+				this.emit('error', err);
+
+				this.attemptReconnect();
+
+				return;
+			}
+
+			this.status = 'connected';
+			this.emit('connected');
+		});
+/*
 		this.pool.acquire()
 			.then(conn => {
-				this.conn = conn;
+				this.status = 'connected';
 				this.emit('connected');
 			})
 			.catch((e) => {
 
+				this.status = 'disconnected';
+
+				console.log('Failed to connect to database');
 				console.log(e);
 
-				this.conn = null;
 				this.emit('error', e);
 
-				// Reconnecting
-				this.timer = setTimeout(() => {
-
-					this.emit('reconnect')
-					this.connect();
-				}, this.opts.connectionRetryInterval);
-			});
+				this.attemptReconnect();
+		});
+*/
 	}
 
 	disconnect() {
+		this.status = 'disconnected';
 		clearTimeout(this.timer);
+		this.pool.close();
+		/*
 		this.pool.drain().then(() => {
 		  this.pool.clear();
-		});
+		})
+		*/;
 	}
 };
