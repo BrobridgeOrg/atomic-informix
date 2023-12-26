@@ -80,14 +80,6 @@ module.exports = function (RED) {
 			return node.client.getConnection();
 		};
 
-		this.getPool = function() {
-			return node.client.getPool();
-		};
-
-		this.releasePool = function(conn) {
-			return node.client.releasePool(conn);
-		};
-
 		node.on('close', function() {
 			node.client.disconnect();
 		})

@@ -34,46 +34,42 @@ module.exports = function(RED) {
 			return;
 		}
 
-		node.on('input', async (msg, send, done) => {
+		node.on('input', (msg, send, done) => {
 
 			if (node.config.querySource === 'dynamic' && !msg.query)
 				return;
 
-			let request = await node.connection.getConnection();
-			/*
-			let pool = node.connection.getPool();
-			if (!pool)
-				return;
-*/
 			let tpl = node.tpl;
 			if (msg.query) {
 				// higher priority for msg.query
 				tpl = sanitizedCmd(msg.query);
 			}
 
-			try {
-				node.status({
-					fill: 'blue',
-					shape: 'dot',
-					text: 'requesting'
-				});
-				//let request = await pool.request();
+			node.connection.getConnection()
+				.then(conn => {
 
-				let q = genQueryCmdParameters(tpl, msg);
+					node.status({
+						fill: 'blue',
+						shape: 'dot',
+						text: 'requesting'
+					});
 
-				// append callback function
-				q[2]=function(err, rs){
-					if(err){
-						node.status({
-							fill: 'red',
-							shape: 'ring',
-							text: err.toString()
-						});
+					let q = genQueryCmdParameters(tpl, msg);
 
-						msg.errorCode=err.sqlcode;
-						node.error(err, msg);
-						done();
-					} else {
+					// append callback function
+					q[2] = (err, rs) => {
+						if (err) {
+							node.status({
+								fill: 'red',
+								shape: 'ring',
+								text: err.toString()
+							});
+
+							msg.errorCode = err.sqlcode;
+							node.error(err, msg);
+							return done();
+						}
+
 						node.status({
 							fill: 'green',
 							shape: 'dot',
@@ -87,28 +83,36 @@ module.exports = function(RED) {
 							}
 						}
 
+						// Return connection to pool
+						conn.close((err) => {
+							if (err) {
+								node.error(err, msg);
+							}
+						});
+
 						node.send(msg);
 						done();
-					}
+					};
 
-					//node.connection.releasePool(request);
-				};
-				await request.query.apply(request, q);
-			} catch(e) {
-				node.status({
-					fill: 'red',
-					shape: 'ring',
-					text: e.toString()
-				});
+					// execute query
+					conn.query.apply(conn, q);
 
-				node.send({
-					error: e
 				})
+				.catch(e => {
+					node.status({
+						fill: 'red',
+						shape: 'ring',
+						text: e.toString()
+					});
 
-				console.log(e.code);
+					node.send({
+						error: e
+					})
 
-				done(e);
-			}
+					console.log(e.code);
+
+					done(e);
+				})
 		});
 
 		node.on('close', async () => {

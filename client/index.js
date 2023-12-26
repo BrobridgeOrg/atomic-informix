@@ -1,7 +1,6 @@
 const events = require('events');
 const util = require('util');
 const ibmdb = require('ibm_db');
-//const genericPool = require("generic-pool");
 
 module.exports = class Client extends events.EventEmitter {
 
@@ -25,26 +24,13 @@ module.exports = class Client extends events.EventEmitter {
 
 		this.status = 'disconnected';
 		this.timer = null;
-/*
-		this.pool = genericPool.createPool(this.prepareFactory(), {
-			min: this.opts.minPoolSize,
-			max: this.opts.maxPoolSize,
-		});
-*/
+
 		this.pool = new ibmdb.Pool();
+		this.pool.setMaxPoolSize(this.opts.maxPoolSize);
+
+		this.connect();
 	}
-/*
-	prepareFactory() {
-		return {
-			create: () => {
-				return this.createClient();
-			},
-			destroy: (conn) => {
-				conn.close();
-			}
-		};
-	}
-*/
+
 	getConnectionConfigs() {
 
 		// Preparing configurations
@@ -62,42 +48,6 @@ module.exports = class Client extends events.EventEmitter {
 				return entry.join('=');
 			})
 			.join(';');
-	}
-/*
-	acquire() {
-		return new Promise(async (resolve, reject) => {
-
-			if (this.status == 'disconnected') {
-
-				// Waiting for connecting
-				this.on('connected', () => {
-					let conn = await this.pool.acquire();
-					resolve(conn);
-				});
-
-				return;
-			}
-
-			let conn = await this.pool.acquire();
-			resolve(conn);
-		});
-	}
-
-	getPool() {
-		return {
-			request: () => {
-				return this.pool.acquire();
-			}
-		};
-	}
-	*/
-
-	releasePool(conn) {
-		this.pool.release(conn);
-	}
-
-	createClient() {
-		return ibmdb.open(this.getConnectionConfigs());
 	}
 
 	getConnection() {
@@ -138,34 +88,11 @@ module.exports = class Client extends events.EventEmitter {
 			this.status = 'connected';
 			this.emit('connected');
 		});
-/*
-		this.pool.acquire()
-			.then(conn => {
-				this.status = 'connected';
-				this.emit('connected');
-			})
-			.catch((e) => {
-
-				this.status = 'disconnected';
-
-				console.log('Failed to connect to database');
-				console.log(e);
-
-				this.emit('error', e);
-
-				this.attemptReconnect();
-		});
-*/
 	}
 
 	disconnect() {
 		this.status = 'disconnected';
 		clearTimeout(this.timer);
 		this.pool.close();
-		/*
-		this.pool.drain().then(() => {
-		  this.pool.clear();
-		})
-		*/;
 	}
 };

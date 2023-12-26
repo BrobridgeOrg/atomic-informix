@@ -13,15 +13,12 @@ function init(RED) {
 			return;
 		}
 
-		let pool = connection.getPool();
-		if (!pool)
-			return;
-
-
 		(async () => {
 
+			console.log('Executing query: ' + req.body.query);
+
 			try {
-				let rs = await request(connection, pool, req.body.query);
+				let rs = await request(connection, req.body.query);
 
 				res.json({
 					success: true,
@@ -45,7 +42,7 @@ function init(RED) {
 	});
 }
 
-function request(connection, pool, query) {
+function request(connection, query) {
 
 	return new Promise((resolve, reject) => {
 
@@ -55,13 +52,22 @@ function request(connection, pool, query) {
 		}
 
 		// Create request
-		pool.request().then(conn => {
-			conn.query(opts, (err, rows) => {
+		connection.getConnection()
+			.then(conn => {
 
-				if (err) {
+				// Execute query
+				conn.query(opts, (err, rows) => {
 
-					reject(err);
-				} else {
+					if (err) {
+						return reject(err);
+					}
+
+					// Return connection to pool
+					conn.close((err) => {
+						if (err) {
+							node.error(err, msg);
+						}
+					});
 
 					resolve({
 						finished: true,
@@ -69,9 +75,10 @@ function request(connection, pool, query) {
 						rowsAffected: rows.length,
 						//rowsAffected: rowsAffected,
 					});
-				}
+				})
+			})
+			.catch(err => {
+				reject(err);
 			});
-			connection.releasePool(conn);
-		});
 	});
 }
