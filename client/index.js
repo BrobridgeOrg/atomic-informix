@@ -24,11 +24,10 @@ module.exports = class Client extends events.EventEmitter {
 
 		this.status = 'disconnected';
 		this.timer = null;
+		this.isClosed = false;
 
 		this.pool = new ibmdb.Pool();
 		this.pool.setMaxPoolSize(this.opts.maxPoolSize);
-
-		this.connect();
 	}
 
 	getConnectionConfigs() {
@@ -58,8 +57,14 @@ module.exports = class Client extends events.EventEmitter {
 
 		clearTimeout(this.timer);
 
+		if (this.isClosed)
+			return;
+
 		// Reconnecting
 		this.timer = setTimeout(() => {
+
+			if (this.isClosed)
+				return;
 
 			this.emit('reconnect')
 			this.connect();
@@ -68,9 +73,14 @@ module.exports = class Client extends events.EventEmitter {
 
 	connect() {
 
+		this.isClosed = false;
+
 		console.log('connecing', this.getConnectionConfigs());
 
 		this.pool.open(this.getConnectionConfigs(), (err, db) => {
+
+			if (this.isClosed)
+				return;
 
 			if (err) {
 				this.status = 'disconnected';
@@ -85,12 +95,15 @@ module.exports = class Client extends events.EventEmitter {
 				return;
 			}
 
-			this.status = 'connected';
-			this.emit('connected');
+			if (this.status !== 'connected') {
+				this.status = 'connected';
+				this.emit('connected');
+			}
 		});
 	}
 
 	disconnect() {
+		this.isClosed = true;
 		this.status = 'disconnected';
 		clearTimeout(this.timer);
 		this.pool.close();
