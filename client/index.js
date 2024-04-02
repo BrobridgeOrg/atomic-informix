@@ -49,8 +49,33 @@ module.exports = class Client extends events.EventEmitter {
 			.join(';');
 	}
 
+	async getAvailableConnection() {
+
+    for (let i = 0; i < this.opts.maxPoolSize; i++) {
+
+      let conn = await this.pool.open(this.getConnectionConfigs());
+
+      // not used in 60 seconds
+      if (conn.usedAt > 0 && conn.usedAt + 1000 * 60 < Date.now()) {
+        try {
+
+          // Testing connection
+          conn.querySync('SELECT 1 FROM (SELECT 1 AS dual FROM systables WHERE (tabid = 1)) AS dual');
+
+        } catch (e) {
+          // Connection is dead so open next one
+          continue;
+        }
+      }
+
+      conn.usedAt = Date.now();
+
+      return conn;
+    }
+  }
+
 	getConnection() {
-		return this.pool.open(this.getConnectionConfigs());
+    return this.getAvailableConnection();
 	}
 
 	attemptReconnect() {
