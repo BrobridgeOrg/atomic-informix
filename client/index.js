@@ -51,7 +51,7 @@ module.exports = class Client extends events.EventEmitter {
 
 	async getAvailableConnection() {
 
-    for (let i = 0; i < this.opts.maxPoolSize; i++) {
+    for (let i = 0; i <= this.opts.maxPoolSize; i++) {
 
       let conn = await this.pool.open(this.getConnectionConfigs());
 
@@ -60,7 +60,7 @@ module.exports = class Client extends events.EventEmitter {
         try {
 
           // Testing connection
-          conn.querySync('SELECT 1 FROM (SELECT 1 AS dual FROM systables WHERE (tabid = 1)) AS dual');
+          await conn.query('SELECT 1 FROM (SELECT 1 AS dual FROM systables WHERE (tabid = 1)) AS dual');
 
         } catch (e) {
           // Connection is dead so open next one
