@@ -40,6 +40,8 @@ module.exports = class Client extends events.EventEmitter {
 			PORT: this.opts.port,
 			UID: this.opts.auth.username || '',
 			PWD: this.opts.auth.password || '',
+      DB_LOCALE: 'en_us.UTF8',
+      CLIENT_LOCALE: 'en_us.UTF8',
 		}
 
 		return Object.entries(configs)
