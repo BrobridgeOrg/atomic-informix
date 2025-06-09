@@ -13,12 +13,17 @@
   "author": "Fred Chien <fred@brobridge.com>",
   "license": "APL",
   "node-red": {
+    "version": ">=2.0.0",
     "nodes": {
       "informix-connection": "informix-connection.js",
       "informix-execute": "informix-execute.js"
     }
   },
   "dependencies": {
+    "@brobridge/atomic-sdk": "^0.0.3",
     "ibm_db": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=18"
   }
 }
