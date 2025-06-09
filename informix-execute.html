@@ -10,6 +10,10 @@
 		credentials: {
 		},
 		defaults: {
+			flowControllable: {
+				value: true,
+				required: true,
+			},
 			name: {
 				value: ''
 			},
@@ -23,6 +27,14 @@
 			},
 			command: {
 				value: ''
+			},
+			deliveryMethod: {
+				value: 'direct',
+				required: true
+			},
+			maxbatchrecords: {
+				value: 100,
+				required: true
 			},
 			outputPropType: {
 				value: 'msg'
@@ -40,6 +52,22 @@
 		oneditprepare: function() {
 
 			let node = this;
+
+			// Delivery methods
+			function updateDeliveryMethods() {
+				switch ($('#node-input-deliveryMethod').val()) {
+					case 'streaming':
+						$('#node-row-streaming').show();
+						break;
+					default:
+						$('#node-row-streaming').hide();
+				}
+			}
+
+			updateDeliveryMethods();
+			$("#node-input-deliveryMethod").on("change", function () {
+				updateDeliveryMethods();
+			});
 
 			// Tabs
 			var tabs = RED.tabs.create({
@@ -355,6 +383,20 @@
         <input type="hidden" id="node-input-outputProp">
     </div>
 
+    <div class="form-row">
+      <label for="node-input-deliveryMethod" style="width: 130px"><i class="fa fa-check-circle"></i> Delivery Method</label>
+      <select id="node-input-deliveryMethod" style='width:70%'>
+        <option value="direct">Return results directly</option>
+        <option value="streaming">Streaming</option>
+      </select>
+      <div id="node-row-streaming" style="margin-left: 30px; margin-top: 10px;" class="hide">
+        <div class="form-row">
+          <label for="node-input-maxbatchrecords"><i class="fa fa-stack-exchange"></i> Max Records</label>
+          <input type="text" id="node-input-maxbatchrecords" style="width:100px" placeholder="100"> of a batch
+        </div>
+      </div>
+    </div>
+
     <div class="form-row func-tabs-row">
         <ul style="min-width: 600px; margin-bottom: 20px;" id="func-tabs"></ul>
     </div>
@@ -409,5 +451,20 @@
 </script>
 
 <script type="text/html" data-help-name="Informix Execute">
-	<p>Execute queries in Informix Database Server</p>
+    <p>The <b>Informix Execute</b> node allows you to run SQL queries against an Informix database.</p>
+    <h3>Query Source</h3>
+    <ul>
+        <li><code>auto</code>: Uses <code>msg.query</code> if available; otherwise uses static SQL.</li>
+        <li><code>static</code>: Always uses the static SQL defined in the node.</li>
+        <li><code>dynamic</code>: Uses <code>msg.query</code> only. Skips if <code>msg.query</code> is empty.</li>
+    </ul>
+    <h3>Delivery Method</h3>
+    <ul>
+      <li><b>direct</b>: Sends all query results in one message</li>
+      <li><b>streaming</b>: Sends batches of results. Use with <b>Flow Control</b> node from @brobridge/atomic-flowcontrol</li>
+    </ul>
+    <h3>Output Property</h3>
+    <p>You can specify where the output will be stored (e.g., <code>msg.payload</code>)</p>
+    <h3>Playground</h3>
+    <p>Use the integrated SQL editor to test and preview results from your configured connection.</p>
 </script>
