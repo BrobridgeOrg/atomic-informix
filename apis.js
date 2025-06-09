@@ -40,6 +40,21 @@ function init(RED) {
 
 		})();
 	});
+
+	RED.httpAdmin.get(prefix + '/informix-execute-nodes', RED.auth.needsPermission('flows.write'), function(req, res) {
+		// Retrieve all nodes of type "Informix Execute"
+		const nodes = [];
+		RED.nodes.eachNode(function(node) {
+			if (node.type === 'Informix Execute') {
+				nodes.push({
+					id: node.id,
+					name: node.name || node.id,
+					z: node.z // Get the flow ID
+				});
+			}
+		});
+		res.json(nodes);
+	});
 }
 
 function request(connection, query) {
