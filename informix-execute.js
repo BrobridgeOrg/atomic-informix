@@ -30,6 +30,9 @@ module.exports = function(RED) {
         this.config.maxbatchrecords = parseInt(config.maxbatchrecords) || 100;
         this.config.stream = (config.deliveryMethod == 'streaming') ? true : false;
 
+        // Track last message state to avoid duplicate complete messages
+        this.lastMessageComplete = false;
+
         // Register the node as a Atomic Component
         atomicSDK.registerAtomicComponent(node);
         atomicSDK.enableSessionManager(node);
@@ -37,26 +40,76 @@ module.exports = function(RED) {
         // Get the session manager
         let sm = node.atomic.getModule('SessionManager');
 
-        if (!this.connection) {
+        // Helper function to update node status
+        const updateStatus = (fill, shape, text) => {
             node.status({
-                fill: 'red',
-                shape: 'ring',
-                text: 'disconnected'
+                fill: fill,
+                shape: shape,
+                text: text
             });
+        };
+
+        if (!this.connection) {
+            updateStatus('red', 'ring', 'no connection configured');
             return;
+        }
+
+        // Test connection and update status accordingly
+        const testConnection = async () => {
+            updateStatus('yellow', 'ring', 'testing connection');
+            
+            try {
+                // Test if we can get a connection
+                const testConn = await node.connection.getConnection();
+                if (testConn) {
+                    testConn.close(); // Close test connection immediately
+                    updateStatus('green', 'ring', 'connection ready');
+                    return true;
+                }
+            } catch (e) {
+                console.log('[Informix Connection Test]', e.message);
+                updateStatus('red', 'ring', 'connection failed');
+                return false;
+            }
+        };
+
+        // Initial connection test
+        testConnection();
+
+        // Monitor connection status changes
+        if (this.connection.client) {
+            this.connection.client.on('connected', () => {
+                updateStatus('green', 'ring', 'connection ready');
+            });
+
+            this.connection.client.on('disconnect', () => {
+                updateStatus('red', 'ring', 'disconnected');
+            });
+
+            this.connection.client.on('reconnect', () => {
+                updateStatus('yellow', 'ring', 'reconnecting');
+            });
+
+            this.connection.client.on('error', (err) => {
+                updateStatus('red', 'ring', `connection error: ${err.message}`);
+            });
         }
 
 		node.on('input', async (msg, send, done) => {
 
-            if (node.config.querySource === 'dynamic' && !msg.query)
+            if (node.config.querySource === 'dynamic' && !msg.query) {
+                updateStatus('yellow', 'ring', 'no query provided');
                 return;
+            }
 
             let conn = null;
             try {
+                updateStatus('blue', 'ring', 'getting connection');
                 conn = await node.connection.getConnection();
+                updateStatus('blue', 'dot', 'connection acquired');
             } catch (e) {
                 console.error('[Informix Connect Error]', e.stack);
-                node.status({ fill: 'red', shape: 'ring', text: e.toString() });
+                updateStatus('red', 'ring', 'connection failed');
                 done(e);
                 return;
             }
@@ -67,13 +120,12 @@ module.exports = function(RED) {
                 tpl = sanitizedCmd(msg.query);
             }
 
-            node.status({
-                fill: 'blue',
-                shape: 'dot',
-                text: 'requesting'
-            });
+            updateStatus('blue', 'dot', 'starting execution');
 
-            // Prparing request
+            // Reset last message state for new execution
+            node.lastMessageComplete = false;
+
+            // Preparing request
             let err = null;
             let rows = [];
             let request = {
@@ -87,19 +139,38 @@ module.exports = function(RED) {
             if (session) {
               session.request = request;
               session.on('resume', function() {
+                updateStatus('blue', 'dot', 'execution resumed');
                 if (request.streamObj && request.streamObj.readable) {
                     request.streamObj.resume();
                 }
               });
 
               session.once('close', function() {
+                updateStatus('yellow', 'ring', 'session closing');
                 request.cancelled = true;
+                
+                // Only send break signal if last message was not complete
+                if (!node.lastMessageComplete && node.config.outputPropType == 'msg') {
+                    let breakMsg = Object.assign({}, msg);
+                    breakMsg[node.config.outputProp] = {
+                        results: [],
+                        rowsAffected: 0,
+                        complete: true,
+                        break: true
+                    };
+                    node.send(breakMsg);
+                    updateStatus('yellow', 'dot', 'break signal sent');
+                } else {
+                    updateStatus('yellow', 'dot', 'session closed (no break needed)');
+                }
+                
                 if (request.streamObj) {
                     request.streamObj.destroy();
                 }
                 if (request.conn) {
                     request.conn.close();
                 }
+                updateStatus('grey', 'ring', 'session closed');
                 done();
               });
             }
@@ -117,6 +188,7 @@ module.exports = function(RED) {
 
                 if (request.streamObj && request.streamObj.pause) {
                     request.streamObj.pause();
+                    updateStatus('blue', 'ring', 'stream paused');
                 }
 
                 if (node.config.outputPropType == 'msg') {
@@ -131,11 +203,10 @@ module.exports = function(RED) {
                         complete: false,
                     }
 
-                    node.status({
-                        fill: 'blue',
-                        shape: 'dot',
-                        text: 'streaming'
-                    });
+                    // Track message state
+                    node.lastMessageComplete = false;
+
+                    updateStatus('blue', 'dot', `streaming (${rows.length} records)`);
 
                     node.send(m);
 
@@ -147,15 +218,12 @@ module.exports = function(RED) {
             // Simulate request.on('done') event handling
             const handleDoneEvent = (returnedValue) => {
                 if (err) {
+                    updateStatus('red', 'ring', 'execution failed');
                     done(err);
                     return;
                 }
 
-                node.status({
-                    fill: 'green',
-                    shape: 'dot',
-                    text: 'done'
-                });
+                updateStatus('green', 'dot', `completed (${returnedValue || rows.length} records)`);
 
                 // Preparing result
                 if (node.config.outputPropType == 'msg') {
@@ -164,6 +232,9 @@ module.exports = function(RED) {
                         rowsAffected: returnedValue || rows.length,
                         complete: true,
                     }
+
+                    // Track that we sent a complete message
+                    node.lastMessageComplete = true;
                 }
 
                 node.send(msg);
@@ -177,12 +248,19 @@ module.exports = function(RED) {
                 // Reset buffer
                 rows = [];
 
+                // Return to ready state after completion
+                setTimeout(() => {
+                    updateStatus('green', 'ring', 'ready');
+                }, 1000);
+
                 done();
             };
 
             // Simulate request.on('error') event handling
             const handleErrorEvent = (e) => {
               console.error('[Informix Query Error Stack]', e.stack);
+
+              updateStatus('red', 'ring', `error: ${e.message || e.toString()}`);
 
               if (session) {
                 session.close();
@@ -195,12 +273,6 @@ module.exports = function(RED) {
 
               err = e;
 
-              node.status({
-                fill: 'red',
-                shape: 'ring',
-                text: err.toString()
-              });
-
               msg.error = {
                 code: err.sqlcode || err.code,
                 lineNumber: err.lineNumber,
@@ -209,13 +281,27 @@ module.exports = function(RED) {
                 number: err.number || err.sqlcode,
               };
 
+              // Mark that we didn't send a complete message due to error
+              node.lastMessageComplete = false;
+
               node.send(msg);
+
+              // Return to ready state after error handling
+              setTimeout(() => {
+                  updateStatus('yellow', 'ring', 'error handled');
+                  // Test connection again after error
+                  setTimeout(() => {
+                      testConnection();
+                  }, 1000);
+              }, 2000);
             };
 
             let sql = null;
             try {
+                updateStatus('blue', 'dot', 'preparing query');
                 sql = genQueryCmdParameters(tpl, msg);
             } catch (e) {
+                updateStatus('red', 'ring', 'query preparation failed');
                 node.error(e);
                 if (request.conn) {
                     request.conn.close();
@@ -227,6 +313,7 @@ module.exports = function(RED) {
             // Execute SQL command - adapting Informix API to match MSSQL pattern
             if (node.config.stream) {
                 try {
+                    updateStatus('blue', 'dot', 'starting stream');
                     // Use queryStream for streaming, but wrap it to match MSSQL request pattern
                     request.streamObj = request.conn.queryStream(sql[0], sql[1] || []);
                     
@@ -237,24 +324,31 @@ module.exports = function(RED) {
 
                     request.streamObj.once('end', () => {
                         if (request.cancelled) return;
+                        updateStatus('blue', 'dot', 'stream completed');
                         handleDoneEvent(rows.length);
                     });
 
                     request.streamObj.once('error', (e) => {
                         if (request.cancelled) return;
+                        updateStatus('red', 'ring', 'stream error');
                         handleErrorEvent(e);
                     });
 
                 } catch (e) {
+                    updateStatus('red', 'ring', 'stream creation failed');
                     handleErrorEvent(e);
                 }
             } else {
                 // For non-streaming, use callback but process through the same event handlers
+                updateStatus('blue', 'dot', 'executing query');
                 sql[2] = (queryErr, rs) => {
                     if (queryErr) {
+                        updateStatus('red', 'ring', 'query execution failed');
                         handleErrorEvent(queryErr);
                         return;
                     }
+
+                    updateStatus('blue', 'dot', 'processing results');
 
                     // Process all rows through the row handler
                     if (rs && rs.length > 0) {
@@ -270,6 +364,7 @@ module.exports = function(RED) {
         });
 
         node.on('close', async () => {
+          updateStatus('grey', 'ring', 'shutting down');
 
           // Release all sessions
           for (let session of sm.sessions) {
@@ -280,6 +375,7 @@ module.exports = function(RED) {
           }
 
           atomicSDK.releaseNode(node);
+          updateStatus('grey', 'ring', 'shutdown complete');
         });
     }
 
