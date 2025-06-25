@@ -22,12 +22,24 @@
 				required: true,
 				validate: RED.validators.number()
 			},
+            protocol: {
+				value: 'tcpip',
+			},
             authType: {
 				value: 'default',
+			},
+            authentication: {
+				value: 'server',
 			},
             database: {
 				value: '',
 				required: true
+			},
+            client_locale: {
+				value: 'en_us.utf8',
+			},
+            db_locale: {
+				value: 'en_us.utf8',
 			},
 			connectionRetryInterval: {
 				value: 3000,
@@ -64,6 +76,10 @@
 			//$('#node-config-input-connectionTimeout').val(this.connectionTimeout || 15000);
 			//$('#node-config-input-poolIdleTimeoutMillis').val(this.poolIdleTimeoutMillis || 30000);
 			$('#node-config-input-connectionRetryInterval').val(this.connectionRetryInterval || 3000);
+			$('#node-config-input-protocol').val(this.protocol || 'tcpip');
+			$('#node-config-input-authentication').val(this.authentication || 'server');
+			$('#node-config-input-client_locale').val(this.client_locale || 'en_us.utf8');
+			$('#node-config-input-db_locale').val(this.db_locale || 'en_us.utf8');
 		}
     });
 </script>
@@ -81,11 +97,27 @@
         <label for="node-config-input-port" style="width: 130px"><i class="fa fa-random"></i> Port</label>
         <input type="text" id="node-config-input-port">
     </div>
+    <div class="form-row">
+        <label for="node-config-input-protocol" style="width: 130px"><i class="fa fa-plug"></i> Protocol</label>
+        <select id="node-config-input-protocol">
+            <option value="tcpip">TCP/IP</option>
+            <option value="shm">Shared Memory</option>
+            <option value="ipc">IPC</option>
+        </select>
+    </div>
 	<div class="form-row">
-        <label for="node-config-input-authType" style="width: 130px"><i class="fa fa-certificate"></i> Authentication</label>
+        <label for="node-config-input-authType" style="width: 130px"><i class="fa fa-certificate"></i> Auth Type</label>
 		<select id="node-config-input-authType">
 			<option value="default">Default</option>
 		</select>
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-authentication" style="width: 130px"><i class="fa fa-shield"></i> Authentication</label>
+        <select id="node-config-input-authentication">
+            <option value="server">Server</option>
+            <option value="client">Client</option>
+            <option value="pam">PAM</option>
+        </select>
     </div>
     <div class="form-row">
         <label for="node-config-input-username" style="width: 130px"><i class="fa fa-user"></i> Username</label>
@@ -106,6 +138,20 @@
 			<div class="form-row">
 				<label for="node-config-input-connectionRetryInterval" style="width: 150px;">Reconnect Intervals</label>
 				<input type="number" id="node-config-input-connectionRetryInterval" style="width:100px"> ms
+			</div>
+		</div>
+	</div>
+	<hr />
+	<div class="form-row">
+		<label for="node-row-locale" style="width: 200px;font-weight:bold">Locale Settings</label>
+		<div id="node-row-locale" style="margin-left: 30px; margin-top: 10px;">
+			<div class="form-row">
+				<label for="node-config-input-client_locale" style="width: 150px;">Client Locale</label>
+				<input type="text" id="node-config-input-client_locale" style="width:150px" placeholder="en_us.utf8">
+			</div>
+			<div class="form-row">
+				<label for="node-config-input-db_locale" style="width: 150px;">Database Locale</label>
+				<input type="text" id="node-config-input-db_locale" style="width:150px" placeholder="en_us.utf8">
 			</div>
 		</div>
 	</div>
