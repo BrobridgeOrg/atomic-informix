@@ -34,21 +34,22 @@ module.exports = class Client extends events.EventEmitter {
 
 		// Preparing configurations
 		let configs = {
-			PROTOCOL: 'TCPIP',
+			PROTOCOL: (this.opts.protocol || 'tcpip').toUpperCase(),
 			DATABASE: this.opts.database,
 			HOSTNAME: this.opts.server,
 			PORT: this.opts.port,
 			UID: this.opts.auth.username || '',
 			PWD: this.opts.auth.password || '',
-      DB_LOCALE: 'en_us.UTF8',
-      CLIENT_LOCALE: 'en_us.UTF8',
+			DB_LOCALE: this.opts.db_locale || 'en_us.utf8',
+			CLIENT_LOCALE: this.opts.client_locale || 'en_us.utf8',
+			AUTHENTICATION: (this.opts.authentication || 'server').toLowerCase(),
 		}
 
 		return Object.entries(configs)
 			.map(entry => {
 				return entry.join('=');
 			})
-			.join(';');
+			.join(';') + ';';
 	}
 
 	async getAvailableConnection() {
