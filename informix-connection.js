@@ -19,11 +19,17 @@ module.exports = function (RED) {
 			port: Number(n.port),
 			domain: n.domain,
 			database: n.database,
+			protocol: n.protocol || 'tcpip',
 			/*
 			connectionTimeout: Number(n.connectionTimeout) || 15000,
 			requestTimeout: Number(n.requestTimeout) || 15000,
 			*/
 			connectionRetryInterval: Number(n.connectionRetryInterval) || 3000,
+			// Locale settings
+			client_locale: n.client_locale || 'en_us.utf8',
+			db_locale: n.db_locale || 'en_us.utf8',
+			// Authentication settings
+			authentication: n.authentication || 'server',
 			auth: {
 				type: n.authType || 'default',
 				username: this.credentials.username || 'sa',
