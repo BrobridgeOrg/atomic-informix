@@ -1,5 +1,5 @@
 {
-  "name": "atomic-informix",
+  "name": "@brobridge/atomic-informix",
   "version": "0.0.11",
   "description": "Informix database module for Brobridge Atomic",
   "scripts": {
